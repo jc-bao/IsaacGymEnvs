@@ -259,14 +259,14 @@ class Triroller(VecTask):
 	# limits of the object (mapped later: str -> torch.tensor)
 	_object_limits: dict = {
 		"position": SimpleNamespace(
-			low=np.array([-0.3, -0.3, 0], dtype=np.float32),
-			high=np.array([0.3, 0.3, 0.3], dtype=np.float32),
+			low=np.array([-0.1, -0.1, 0], dtype=np.float32),
+			high=np.array([0.1, 0.1, 0.1], dtype=np.float32),
 			default=np.array([0, 0, _object_dims.min_height+0.03], dtype=np.float32)
 		),
 		# difference between two positions
 		"position_delta": SimpleNamespace(
-			low=np.array([-0.6, -0.6, 0], dtype=np.float32),
-			high=np.array([0.6, 0.6, 0.3], dtype=np.float32),
+			low=np.array([-0.2, -0.2, 0], dtype=np.float32),
+			high=np.array([0.2, 0.2, 0.1], dtype=np.float32),
 			default=np.array([0, 0, 0], dtype=np.float32)
 		),
 		"orientation": SimpleNamespace(
@@ -1362,7 +1362,8 @@ def compute_trifinger_reward(
 	not_change_in_obj_pos = torch.norm(
 		last_object_state[:, 0:3] - object_state[:, 0:3],
 		p=2, dim=-1) < 0.0002
-	reset_env = (not_change_in_obj_orn & not_change_in_obj_pos) | (progress_buf >= episode_length - 1)
+	obj_fly_away = (torch.abs(object_state[:, 0:2])>0.08).any(dim=-1) | (object_state[:, 2]>0.1)
+	reset_env = (not_change_in_obj_orn & not_change_in_obj_pos) | (progress_buf >= episode_length - 1) | obj_fly_away
 	reset = torch.where(reset_env, torch.ones_like(reset_buf), reset)
 
 	info: Dict[str, torch.Tensor] = {

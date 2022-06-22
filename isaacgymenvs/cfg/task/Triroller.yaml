@@ -52,7 +52,7 @@ env:
   termination_conditions:
     success:
       orientation_tolerance: 0.4
-      position_tolerance: 0.02
+      position_tolerance: 0.01
 
   # set to True if you use camera sensors in the environment
   enableCameraSensors: False
@@ -65,7 +65,8 @@ sim:
   gravity:
   - 0.0
   - 0.0
-  - -9.81
+  # - -9.81
+  - 0.0 
   physx:
     num_threads: ${....num_threads}
     solver_type: ${....solver_type}
