@@ -45,6 +45,7 @@ from rl_games.common import env_configurations, vecenv
 from rl_games.torch_runner import Runner
 
 import yaml
+import wandb
 
 from isaacgymenvs.learning import amp_continuous
 from isaacgymenvs.learning import amp_players
@@ -88,6 +89,12 @@ def launch_rlg_hydra(cfg: DictConfig):
         cfg.graphics_device_id,
         cfg.headless,
         multi_gpu=cfg.multi_gpu,
+    )
+
+    wandb.init(
+        project='rlg',
+        config=OmegaConf.to_container(cfg),
+        sync_tensorboard=True
     )
 
     # register the rl-games adapter to use inside the runner
