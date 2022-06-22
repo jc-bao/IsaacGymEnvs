@@ -478,7 +478,8 @@
 	<joint name="r1_left" type="revolute">
 		<parent link="base_link"/>
 		<child link="link0_11"/>
-		<dynamics damping="1.0" friction="0.0001"/>
+		<!-- <dynamics damping="1.0" friction="0.0001"/> -->
+		<dynamics damping="10.0" friction="0.01"/>
 		<origin rpy="0.00000 -0.00000 -2.61768" xyz="-0.04157 -0.02399 0.04500"/>
 		<axis xyz="0.00000 1.00000 0.00000"/>
 	</joint>
@@ -499,7 +500,8 @@
 	<joint name="r2_left" type="revolute">
 		<parent link="l11_left"/>
 		<child link="link0_14"/>
-		<dynamics damping="1.0" friction="0.0001"/>
+		<!-- <dynamics damping="1.0" friction="0.0001"/> -->
+		<dynamics damping="10.0" friction="0.01"/>
 		<origin rpy="0.00000 -0.00000 0.00000" xyz="-0.01000 0.00000 0.05825"/>
 		<axis xyz="1.00000 0.00000 0.00000"/>
 	</joint>
@@ -513,7 +515,8 @@
 	<joint name="r3_left" type="revolute">
 		<parent link="l2_left"/>
 		<child link="link0_16"/>
-		<dynamics damping="1.0" friction="0.0001"/>
+		<!-- <dynamics damping="1.0" friction="0.0001"/> -->
+		<dynamics damping="10.0" friction="0.01"/>
 		<origin rpy="0.00000 -0.00000 0.00000" xyz="-0.03500 0.00000 0.00000"/>
 		<axis xyz="0.00000 0.00000 1.00000"/>
 	</joint>
