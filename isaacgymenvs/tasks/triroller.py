@@ -63,7 +63,7 @@ class TrirollerDimensions(enum.Enum):
 
 
 # readius of the area
-ARENA_RADIUS = 0.195
+ARENA_RADIUS = 0.06
 
 
 class CuboidalObject:
@@ -79,7 +79,7 @@ class CuboidalObject:
 	max_com_distance_to_center: float
 	# minimum and mximum height for spawning the object
 	min_height: float
-	max_height = 0.1
+	max_height = 0.07
 
 	NumKeypoints = 8
 	ObjectPositionDim = 3
@@ -144,7 +144,7 @@ class CuboidalObject:
 		# compute distance from wall to the center
 		self.max_com_distance_to_center = ARENA_RADIUS - self.radius_3d
 		# minimum height for spawning the object
-		self.min_height = self._size[2] / 2
+		self.min_height = self._size[2] / 1.8
 
 
 class Triroller(VecTask):
@@ -164,14 +164,17 @@ class Triroller(VecTask):
 
 	# physical dimensions of the object
 	# TODO: Make object dimensions configurable.
-	_object_dims = CuboidalObject(0.065)
+	_object_dims = CuboidalObject(0.04)
 	# dimensions of the system
 	_dims = TrirollerDimensions
 	# Constants for limits
 	# Ref: https://github.com/rr-learning/rrc_simulation/blob/master/python/rrc_simulation/trifinger_platform.py#L68
 	# maximum joint torque (in N-m) applicable on each actuator
-	_max_torque_Nm = [-0.02, 0.0, 0.05]*3
-	_min_torque_Nm = [-0.02, 0.0, -0.05]*3
+	# r1_front r2_front r3_front 
+	# r1_left r2_left r3_left
+	# r1_right r2_right r3_right
+	_max_torque_Nm = [-0.01, 0.05, 0.03]*3
+	_min_torque_Nm = [-0.03, -0.05, -0.03]*3
 	# maximum joint velocity (in rad/s) on each actuator
 	_max_velocity_radps = 10
 
@@ -213,9 +216,9 @@ class Triroller(VecTask):
 	_robot_limits: dict = {
 		"joint_position": SimpleNamespace(
 			# matches those on the real robot
-			low=np.array([-0.33, 0.0, -2.7] * _dims.NumFingers.value, dtype=np.float32),
-			high=np.array([1.0, 1.57, 0.0] * _dims.NumFingers.value, dtype=np.float32),
-			default=np.array([0.0, 0.9, -2.0] * _dims.NumFingers.value, dtype=np.float32),
+			low=np.array([-0.3, -3.14, -3.14] * _dims.NumFingers.value, dtype=np.float32),
+			high=np.array([0.785, 3.14, 3.14] * _dims.NumFingers.value, dtype=np.float32),
+			default=np.array([0.0, 0., 0.0] * _dims.NumFingers.value, dtype=np.float32),
 		),
 		"joint_velocity": SimpleNamespace(
 			low=np.full(_dims.JointVelocityDim.value, -_max_velocity_radps, dtype=np.float32),
@@ -258,7 +261,7 @@ class Triroller(VecTask):
 		"position": SimpleNamespace(
 			low=np.array([-0.3, -0.3, 0], dtype=np.float32),
 			high=np.array([0.3, 0.3, 0.3], dtype=np.float32),
-			default=np.array([0, 0, _object_dims.min_height], dtype=np.float32)
+			default=np.array([0, 0, _object_dims.min_height+0.03], dtype=np.float32)
 		),
 		# difference between two positions
 		"position_delta": SimpleNamespace(
@@ -349,7 +352,7 @@ class Triroller(VecTask):
 		super().__init__(config=self.cfg, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless)
 
 		if self.viewer != None:
-			cam_pos = gymapi.Vec3(0.7, 0.0, 0.7)
+			cam_pos = gymapi.Vec3(0.3, 0.0, 0.3)
 			cam_target = gymapi.Vec3(0.0, 0.0, 0.0)
 			self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
 
@@ -422,6 +425,7 @@ class Triroller(VecTask):
 		self._action_scale = SimpleNamespace(low=None, high=None)
 
 		self._successes = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+		# self._fail = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
 		self._successes_pos = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
 		self._successes_quat = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
 
@@ -444,8 +448,8 @@ class Triroller(VecTask):
 		plane_params = gymapi.PlaneParams()
 		plane_params.normal = gymapi.Vec3(0.0, 0.0, 1.0)
 		plane_params.distance = 0.013
-		plane_params.static_friction = 1.0
-		plane_params.dynamic_friction = 1.0
+		plane_params.static_friction = 0.01
+		plane_params.dynamic_friction = 0.01
 		self.gym.add_ground(self.sim, plane_params)
 
 	def _create_scene_assets(self):
@@ -514,7 +518,7 @@ class Triroller(VecTask):
 				self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
 			# add trifinger robot to environment
 			robot_trans = gymapi.Transform()
-			robot_trans.p.z = 0.21
+			robot_trans.p.z = 0.22
 			robot_trans.r.x, robot_trans.r.y, robot_trans.r.z, robot_trans.r.w = 1,0,0,0
 			trifinger_actor = self.gym.create_actor(env_ptr, self.gym_assets["robot"], robot_trans,
 													 "robot", env_index, 0, 0)
@@ -759,6 +763,7 @@ class Triroller(VecTask):
 		self.reset_buf[env_ids] = 0
 		self.progress_buf[env_ids] = 0
 		self._successes[env_ids] = 0
+		# self._fail[env_ids] = 0
 		self._successes_pos[env_ids] = 0
 		self._successes_quat[env_ids] = 0
 		# B) Various randomizations at the start of the episode:
@@ -1052,6 +1057,15 @@ class Triroller(VecTask):
 										  termination_config["success"]["orientation_tolerance"])
 		self._step_info['env/current_orientation_goal/per_env'] =  np.mean(goal_orientation_reset.float().cpu().numpy())
 
+		# check orientation change enough
+		# if_change_in_obj_orn = quat_diff_rad(self._object_state_history[0][:, 3:7],
+		# 											 self._object_state_history[1][:, 3:7]) < (termination_config["success"]["orientation_tolerance"]*0.1)
+		# if_change_in_obj_pos = torch.norm(
+		# 	self._object_state_history[1][:, 0:3] - self._object_state_history[0][:, 0:3],
+		# 	p=2, dim=-1) < (termination_config["success"]["position_tolerance"]*0.1)
+		# task_fail_reset = if_change_in_obj_orn | if_change_in_obj_pos 
+
+
 		if self.cfg["env"]['task_difficulty'] < 4:
 			# Check for task completion if position goal is within a threshold
 			task_completion_reset = goal_position_reset
@@ -1065,6 +1079,9 @@ class Triroller(VecTask):
 		self._successes = task_completion_reset
 		self._successes_pos = goal_position_reset
 		self._successes_quat = goal_orientation_reset
+		# self._fail = task_fail_reset 
+
+		
 
 
 	"""
@@ -1102,7 +1119,7 @@ class Triroller(VecTask):
 		# Ref: https://github.com/rr-learning/rrc_simulation/blob/master/python/rrc_simulation/sim_finger.py#L563
 		trifinger_props = self.gym.get_asset_rigid_shape_properties(trirollers_asset)
 		for p in trifinger_props:
-			p.friction = 30.0
+			p.friction = 500.0
 			p.torsion_friction = 1.0
 			p.restitution = 0.8
 		self.gym.set_asset_rigid_shape_properties(trirollers_asset, trifinger_props)
@@ -1339,7 +1356,14 @@ def compute_trifinger_reward(
 
 	# reset agents
 	reset = torch.zeros_like(reset_buf)
-	reset = torch.where(progress_buf >= episode_length - 1, torch.ones_like(reset_buf), reset)
+	# check orientation change enough
+	not_change_in_obj_orn = quat_diff_rad(last_object_state[:, 3:7],
+													object_state[:, 3:7]) < 0.004
+	not_change_in_obj_pos = torch.norm(
+		last_object_state[:, 0:3] - object_state[:, 0:3],
+		p=2, dim=-1) < 0.0002
+	reset_env = (not_change_in_obj_orn & not_change_in_obj_pos) | (progress_buf >= episode_length - 1)
+	reset = torch.where(reset_env, torch.ones_like(reset_buf), reset)
 
 	info: Dict[str, torch.Tensor] = {
 		'finger_movement_penalty': finger_movement_penalty,
