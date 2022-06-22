@@ -1096,7 +1096,7 @@ class Triroller(VecTask):
 		robot_asset_options.flip_visual_attachments = False
 		robot_asset_options.fix_base_link = True
 		robot_asset_options.collapse_fixed_joints = False
-		robot_asset_options.disable_gravity = False
+		robot_asset_options.disable_gravity = True
 		robot_asset_options.default_dof_drive_mode = gymapi.DOF_MODE_EFFORT
 		robot_asset_options.thickness = 0.001
 		robot_asset_options.angular_damping = 0.01
