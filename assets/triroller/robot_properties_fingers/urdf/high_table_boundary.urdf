@@ -12,7 +12,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/high_table_boundary.stl" scale="1 1 1"/>
+        <mesh filename="package://robot_properties_fingers/meshes/high_table_boundary.stl" scale="0.6 0.6 0.6"/>
       </geometry>
       <material name="stage_material"/>
     </visual>
@@ -20,7 +20,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="package://robot_properties_fingers/meshes/high_table_boundary.stl" scale="1 1 1"/>
+        <mesh filename="package://robot_properties_fingers/meshes/high_table_boundary.stl" scale="0.6 0.6 0.6"/>
       </geometry>
     </collision>
 

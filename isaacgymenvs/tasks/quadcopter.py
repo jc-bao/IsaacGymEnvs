@@ -33,8 +33,8 @@ import torch
 import xml.etree.ElementTree as ET
 
 from isaacgym import gymutil, gymtorch, gymapi
-from utils.torch_jit_utils import *
-from .base.vec_task import VecTask
+from isaacgymenvs.utils.torch_jit_utils import *
+from isaacgymenvs.tasks.base.vec_task import VecTask
 
 
 class Quadcopter(VecTask):
