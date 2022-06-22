@@ -1365,6 +1365,7 @@ def compute_trifinger_reward(
 	obj_fly_away = (torch.abs(object_state[:, 0:2])>0.08).any(dim=-1) | (object_state[:, 2]>0.1)
 	reset_env = (not_change_in_obj_orn & not_change_in_obj_pos) | (progress_buf >= episode_length - 1) | obj_fly_away
 	# reset_env = (progress_buf >= episode_length - 1)
+	reset_env &= ((progress_buf % 10) == 0)
 	reset = torch.where(reset_env, torch.ones_like(reset_buf), reset)
 
 	info: Dict[str, torch.Tensor] = {
