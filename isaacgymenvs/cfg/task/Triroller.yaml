@@ -39,7 +39,7 @@ env:
     finger_reach_object_rate:
       activate: true
       norm_p: 2
-      weight: -250
+      weight: -10
     object_dist:
       activate: false
       weight: 2000
@@ -48,7 +48,7 @@ env:
       weight: 2000
     keypoints_dist:
       activate: true
-      weight: 2000
+      weight: 10000
   termination_conditions:
     success:
       orientation_tolerance: 0.4

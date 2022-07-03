@@ -94,11 +94,13 @@ def launch_rlg_hydra(cfg: DictConfig):
         multi_gpu=cfg.multi_gpu,
     )
 
-    wandb.init(
-        project='rlg',
-        config=OmegaConf.to_container(cfg),
-        sync_tensorboard=True
-    )
+    if cfg.wandb:
+        wandb.init(
+            project='rlg',
+            config=OmegaConf.to_container(cfg),
+            sync_tensorboard=True, 
+            resume='allow'
+        )
 
     # register the rl-games adapter to use inside the runner
     vecenv.register('RLGPU',
