@@ -26,7 +26,6 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
 from isaacgymenvs.tasks.allegro_hand import AllegroHand
 from isaacgymenvs.tasks.ant import Ant
 from isaacgymenvs.tasks.anymal import Anymal
@@ -41,6 +40,7 @@ from isaacgymenvs.tasks.quadcopter import Quadcopter
 from isaacgymenvs.tasks.shadow_hand import ShadowHand
 from isaacgymenvs.tasks.trifinger import Trifinger
 from isaacgymenvs.tasks.triroller import Triroller
+from isaacgymenvs.tasks.biroller import Biroller
 
 # Mappings from strings to environments
 isaacgym_task_map = {
@@ -58,4 +58,5 @@ isaacgym_task_map = {
     "ShadowHand": ShadowHand,
     "Trifinger": Trifinger,
     "Triroller": Triroller,
+    "Biroller": Biroller,
 }
