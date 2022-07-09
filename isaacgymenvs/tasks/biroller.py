@@ -158,8 +158,8 @@ class Biroller(VecTask):
   # dimensions of the system
   _dims = BirollerDimensions
   # TODO change max torqu
-  _max_torque_Nm = [100, 100, 100]*2
-  _min_torque_Nm = [-100, -100, -100]*2
+  _max_torque_Nm = [10, 100, 1000]*2
+  _min_torque_Nm = [-10, -100, -1000]*2
   # maximum joint velocity (in rad/s) on each actuator
   # TODO change max vel
   _max_velocity_radps = 10
@@ -204,8 +204,8 @@ class Biroller(VecTask):
   _robot_limits: dict = {
     "action": SimpleNamespace(
       # matches those on the real robot
-      low=np.array([-10, -20, -3] , dtype=np.float32),
-      high=np.array([10, 20, 3], dtype=np.float32),
+      low=np.array([-2, -20, -1] , dtype=np.float32),
+      high=np.array([2, 20, 1], dtype=np.float32),
       default=np.array(
         [0.0, 0., 0.0], dtype=np.float32),
     ), 
@@ -265,8 +265,8 @@ class Biroller(VecTask):
   obj_z = 0.048
   _object_limits: dict = {
     "position": SimpleNamespace(
-      low=np.array([-0.001, -0.001, obj_z-0.001], dtype=np.float32),
-      high=np.array([0.001, 0.001, obj_z-0.001], dtype=np.float32),
+      low=np.array([-0.1, -0.1, obj_z-0.1], dtype=np.float32),
+      high=np.array([0.1, 0.1, obj_z+0.1], dtype=np.float32),
       default=np.array([0, 0, obj_z], dtype=np.float32)
     ),
     # difference between two positions
@@ -468,8 +468,8 @@ class Biroller(VecTask):
     plane_params = gymapi.PlaneParams()
     plane_params.normal = gymapi.Vec3(0.0, 0.0, 1.0)
     plane_params.distance = 0.013
-    plane_params.static_friction = 0.01
-    plane_params.dynamic_friction = 0.01
+    plane_params.static_friction = 0.001
+    plane_params.dynamic_friction = 0.001
     self.gym.add_ground(self.sim, plane_params)
 
   def _create_scene_assets(self):
@@ -1484,7 +1484,7 @@ def compute_trifinger_reward(
     last_object_state[:, 0:3] - object_state[:, 0:3],
     p=2, dim=-1) < 0.0002
   obj_fly_away = (torch.abs(object_state[:, 0:2]) > 0.08).any(
-    dim=-1) | (object_state[:, 2] > 0.1)
+    dim=-1) | (object_state[:, 2] > 0.08) | (object_state[:, 2] < 0.01)
   reset_env = (not_change_in_obj_orn & not_change_in_obj_pos) | (
     progress_buf >= episode_length - 1) | obj_fly_away
   # reset_env = (progress_buf >= episode_length - 1)

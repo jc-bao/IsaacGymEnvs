@@ -46,7 +46,7 @@ do
     done
     tmux send-keys -t ":0.0" "echo start new run" Enter
     tmux send-keys -t ":0.0" "cd /home/pcy/rl/IsaacGymEnvs/isaacgymenvs; conda activate rlgpu;" Enter
-    tmux send-keys -t ":0.0" "python train.py headless=true task=Triroller checkpoint=/home/pcy/rl/IsaacGymEnvs/isaacgymenvs/runs/Triroller/nn/Triroller.pth" Enter
+    tmux send-keys -t ":0.0" "python train.py headless=true task=Biroller checkpoint=/home/pcy/rl/IsaacGymEnvs/isaacgymenvs/runs/Biroller/nn/Biroller.pth" Enter
     idle_time=0
   fi
   sleep 1
