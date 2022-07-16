@@ -1723,7 +1723,9 @@ def main(cfg):
     images = env.render(mode='rgb_array')
     videos = [[im] for im in images]
   for _ in tqdm(range(50)):
-    act = torch.rand((env.num_envs, env.action_dim), dtype=torch.float, device='cuda:0') * 2 -1
+    act = torch.rand((env.num_envs, env.action_dim), dtype=torch.float, device='cuda:0') * 0
+    act[..., 2] = 1
+    act[..., 3] = 1
     obs, rew, reset, info = env.step(act)
     if save_video:
       images = env.render(mode='rgb_array')
