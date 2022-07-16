@@ -205,8 +205,8 @@ class Biroller(VecTask):
   _robot_limits: dict = {
     "action": SimpleNamespace(
       # matches those on the real robot
-      low=np.array([-0.5, -5, -0.5] , dtype=np.float32),
-      high=np.array([0.5, 5, 0.5], dtype=np.float32),
+      low=np.array([-1, -8, -1] , dtype=np.float32),
+      high=np.array([1, 8, 1], dtype=np.float32),
       default=np.array(
         [0.0, 0., 0.0], dtype=np.float32),
     ), 
@@ -219,9 +219,9 @@ class Biroller(VecTask):
     ),
     "joint_position": SimpleNamespace(
       # matches those on the real robot
-      low=np.array([-0.15, -3.14, -3.14] * \
+      low=np.array([-0.2, -3.14, -3.14] * \
                    _dims.NumFingers.value, dtype=np.float32),
-      high=np.array([0.15, 3.14, 3.14] * \
+      high=np.array([0.2, 3.14, 3.14] * \
                     _dims.NumFingers.value, dtype=np.float32),
       default=np.array(
         [0.0, 0., 0.0] * _dims.NumFingers.value, dtype=np.float32),
@@ -303,8 +303,8 @@ class Biroller(VecTask):
   _robot_dof_gains = {
     # The kp and kd gains of the PD control of the fingers.
     # Note: This depends on simulation step size and is set for a rate of 250 Hz.
-    "stiffness": [80.0, 1000.0, 1000.0] * _dims.NumFingers.value,
-    "damping": [0.2, 1, 1] * _dims.NumFingers.value,
+    "stiffness": [20.0, 1000.0, 100.0] * _dims.NumFingers.value,
+    "damping": [0.01, 1, 1] * _dims.NumFingers.value,
     # The kd gains used for damping the joint motor velocities during the
     # safety torque check on the joint motors.
     "safety_damping": [0.08, 0.08, 0.04] * _dims.NumFingers.value
@@ -1090,6 +1090,7 @@ class Biroller(VecTask):
     else:
       action_transformed = self.actions
 
+    default_finger_pos = 0.02
     # TODO change action to residue mode
     # compute command on the basis of mode selected
     if self.cfg["env"]["command_mode"] == 'torque':
@@ -1110,8 +1111,8 @@ class Biroller(VecTask):
       # make two finger close 
       fl_id = self._robot_dof_indices['finger_l']
       fr_id = self._robot_dof_indices['finger_r']
-      desired_dof_position[..., fl_id] = 0.005
-      desired_dof_position[..., fr_id] = 0.005
+      desired_dof_position[..., fl_id] = default_finger_pos
+      desired_dof_position[..., fr_id] = default_finger_pos
       # get pitch angle
       pl_id = self._robot_dof_indices['pitch_l']
       pr_id = self._robot_dof_indices['pitch_r']
@@ -1126,7 +1127,6 @@ class Biroller(VecTask):
       computed_torque = self._robot_dof_gains["stiffness"] * \
         (desired_dof_position - self._dof_position)
       computed_torque -= self._robot_dof_gains["damping"] * self._dof_velocity
-      print(computed_torque[0,1])
     elif self.cfg["env"]["command_mode"] == 'free':
       desired_dof_position = self._dof_position.clone()
       pitch_l_vel = action_transformed[..., 0]
@@ -1136,8 +1136,8 @@ class Biroller(VecTask):
       # make two finger close
       fl_id = self._robot_dof_indices['finger_l']
       fr_id = self._robot_dof_indices['finger_r']
-      desired_dof_position[..., fl_id] = 0.005
-      desired_dof_position[..., fr_id] = 0.005
+      desired_dof_position[..., fl_id] = default_finger_pos
+      desired_dof_position[..., fr_id] = default_finger_pos
       # get pitch angle
       pl_id = self._robot_dof_indices['pitch_l']
       pr_id = self._robot_dof_indices['pitch_r']
@@ -1382,8 +1382,8 @@ class Biroller(VecTask):
     # Ref: https://github.com/rr-learning/rrc_simulation/blob/master/python/rrc_simulation/collision_objects.py#L96
     object_props = self.gym.get_asset_rigid_shape_properties(object_asset)
     for p in object_props:
-      p.friction = 10.0
-      p.torsion_friction = 0.001
+      p.friction = 1.0
+      p.torsion_friction = 0.0001
       p.restitution = 0.0
     self.gym.set_asset_rigid_shape_properties(object_asset, object_props)
     # return the asset
@@ -1724,6 +1724,7 @@ def main(cfg):
     videos = [[im] for im in images]
   for _ in tqdm(range(100)):
     act = torch.rand((env.num_envs, env.action_dim), dtype=torch.float, device='cuda:0') * 2 - 1
+    # act[:, 2] = 1
     obs, rew, reset, info = env.step(act)
     if save_video:
       images = env.render(mode='rgb_array')

@@ -87,7 +87,7 @@
   <link name="l3">
     <inertial>
       <origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 0.00000" />
-      <mass value="0.1" />
+      <mass value="0.01" />
       <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1" />
     </inertial>
     <collision>
@@ -205,7 +205,7 @@
   <link name="r3">
     <inertial>
       <origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 0.00000" />
-      <mass value="0.1" />
+      <mass value="0.01" />
       <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1" />
     </inertial>
     <collision>

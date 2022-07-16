@@ -4,17 +4,17 @@
     <visual>
       <origin xyz="0 0 0"/>
       <geometry>
-        <mesh filename="meshes/cube_multicolor.obj" scale=".05 .05 .05"/>
+        <mesh filename="meshes/rounded_cube.stl" scale="0.9 0.9 0.9"/>
       </geometry>
     </visual>
     <collision>
       <origin xyz="0 0 0"/>
       <geometry>
-        <box size="0.05 0.05 0.05"/>
+        <mesh filename="meshes/rounded_cube.stl" scale="0.9 0.9 0.9"/>
       </geometry>
     </collision>
     <inertial>
-      <density value="567.0"/>
+      <density value="0.1"/>
     </inertial>
   </link>
 </robot>
