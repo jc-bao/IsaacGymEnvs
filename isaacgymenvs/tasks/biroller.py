@@ -152,7 +152,7 @@ class Biroller(VecTask):
   _robot_urdf_file = "robot_properties_fingers/urdf/biroller.urdf"
   _table_urdf_file = "robot_properties_fingers/urdf/table_without_border.urdf"
   _boundary_urdf_file = "robot_properties_fingers/urdf/high_table_boundary.urdf"
-  _object_urdf_file = "objects/urdf/sphere_multicolor_rrc.urdf"
+  _object_urdf_file = "objects/urdf/cube_multicolor_rrc.urdf"
 
   # physical dimensions of the object
   _object_dims = CuboidalObject(0.04)
