@@ -263,7 +263,7 @@ class Biroller(VecTask):
   }
   # TODO set object limit
   # limits of the object (mapped later: str -> torch.tensor)
-  obj_z = 0.048
+  obj_z = 0.064
   _object_limits: dict = {
     "position": SimpleNamespace(
       low=np.array([-0.1, -0.1, obj_z-0.1], dtype=np.float32),
