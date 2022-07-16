@@ -14,6 +14,7 @@ from isaacgymenvs.utils.reformat import omegaconf_to_dict
 import numpy as np
 import os
 import torch
+from tqdm import tqdm
 
 from collections import OrderedDict
 
@@ -47,9 +48,9 @@ class BirollerDimensions(enum.Enum):
   # number of fingers
   NumFingers = 2
   # for two fingers
-  JointPositionDim = 6
-  JointVelocityDim = 6
-  JointTorqueDim = 6
+  JointPositionDim = 6 + 1
+  JointVelocityDim = 6 + 1
+  JointTorqueDim = 6 + 1 # use wrist
   ActionDim = 3
   # generalized coordinates
   GeneralizedCoordinatesDim = JointPositionDim
@@ -151,15 +152,15 @@ class Biroller(VecTask):
   _robot_urdf_file = "robot_properties_fingers/urdf/biroller.urdf"
   _table_urdf_file = "robot_properties_fingers/urdf/table_without_border.urdf"
   _boundary_urdf_file = "robot_properties_fingers/urdf/high_table_boundary.urdf"
-  _object_urdf_file = "objects/urdf/sphere_multicolor_rrc.urdf"
+  _object_urdf_file = "objects/urdf/cube_multicolor_rrc.urdf"
 
   # physical dimensions of the object
   _object_dims = CuboidalObject(0.04)
   # dimensions of the system
   _dims = BirollerDimensions
   # TODO change max torqu
-  _max_torque_Nm = [10, 100, 1000]*2
-  _min_torque_Nm = [-10, -100, -1000]*2
+  _max_torque_Nm = [1, 100, 1000]*2 + [10]
+  _min_torque_Nm = [-1, -100, -1000]*2 + [-10]
   # maximum joint velocity (in rad/s) on each actuator
   # TODO change max vel
   _max_velocity_radps = 10
@@ -203,20 +204,27 @@ class Biroller(VecTask):
   # TODO set robot limit
   _robot_limits: dict = {
     "action": SimpleNamespace(
-      # matches those on the real robot
-      low=np.array([-2, -20, -1] , dtype=np.float32),
-      high=np.array([2, 20, 1], dtype=np.float32),
+      # matches those on the real robot pitch, roll, moving along, wrist
+      low=np.array([-10, -30, -10, -10], dtype=np.float32),
+      high=np.array([10, 30, 10, 10], dtype=np.float32),
       default=np.array(
-        [0.0, 0., 0.0], dtype=np.float32),
-    ), 
+        [0.0, 0., 0.0, 0.0], dtype=np.float32),
+    ),
+    "joint_vel": SimpleNamespace(
+      # pitch_l, pitch_r, roll_l, roll_r, wrist
+      low=np.array([-10, -10, -20, -20, -10], dtype=np.float32),
+      high=np.array([10, 10, 20, 20, 10], dtype=np.float32),
+      default=np.array(
+        [0.0, 0., 0., 0.0, 0.0], dtype=np.float32),
+    ),
     "joint_position": SimpleNamespace(
       # matches those on the real robot
       low=np.array([-0.15, -3.14, -3.14] * \
-                   _dims.NumFingers.value, dtype=np.float32),
+                   _dims.NumFingers.value + [-3.14], dtype=np.float32),
       high=np.array([0.15, 3.14, 3.14] * \
-                    _dims.NumFingers.value, dtype=np.float32),
+                    _dims.NumFingers.value + [-3.14], dtype=np.float32),
       default=np.array(
-        [0.0, 0., 0.0] * _dims.NumFingers.value, dtype=np.float32),
+        [0.00, 0., 0.0] * _dims.NumFingers.value + [0], dtype=np.float32),
     ),
     "joint_velocity": SimpleNamespace(
       low=np.full(_dims.JointVelocityDim.value, - \
@@ -249,20 +257,20 @@ class Biroller(VecTask):
     ),
     # used if we want to have joint stiffness/damping as parameters`
     "joint_stiffness": SimpleNamespace(
-      low=np.array([1.0, 1.0, 1.0] * _dims.NumFingers.value, dtype=np.float32),
+      low=np.array([1.0, 1.0, 1.0] * _dims.NumFingers.value + [1.0], dtype=np.float32),
       high=np.array([50.0, 50.0, 50.0] * \
-                    _dims.NumFingers.value, dtype=np.float32),
+                    _dims.NumFingers.value + [1.0], dtype=np.float32),
     ),
     "joint_damping": SimpleNamespace(
       low=np.array([0.01, 0.03, 0.0001] * \
-                   _dims.NumFingers.value, dtype=np.float32),
+                   _dims.NumFingers.value + [0.01], dtype=np.float32),
       high=np.array([1.0, 3.0, 0.01] * \
-                    _dims.NumFingers.value, dtype=np.float32),
+                    _dims.NumFingers.value + [1.0], dtype=np.float32),
     ),
   }
   # TODO set object limit
   # limits of the object (mapped later: str -> torch.tensor)
-  obj_z = 0.048
+  obj_z = 0.06
   _object_limits: dict = {
     "position": SimpleNamespace(
       low=np.array([-0.1, -0.1, obj_z-0.1], dtype=np.float32),
@@ -295,16 +303,21 @@ class Biroller(VecTask):
   _robot_dof_gains = {
     # The kp and kd gains of the PD control of the fingers.
     # Note: This depends on simulation step size and is set for a rate of 250 Hz.
-    "stiffness": [100.0, 10.0, 10.0] * _dims.NumFingers.value,
-    "damping": [1, 0.1, 0.1] * _dims.NumFingers.value,
+    "stiffness": [100.0, 10.0, 10.0] * _dims.NumFingers.value + [10.0],
+    "damping": [1, 1, 0.1] * _dims.NumFingers.value + [1],
     # The kd gains used for damping the joint motor velocities during the
     # safety torque check on the joint motors.
-    "safety_damping": [0.08, 0.08, 0.04] * _dims.NumFingers.value
+    "safety_damping": [0.08, 0.08, 0.04] * _dims.NumFingers.value + [0.04]
   }
   action_dim = _dims.ActionDim.value
 
   def __init__(self, cfg, sim_device, graphics_device_id, headless):
     self.cfg = cfg
+
+    if self.cfg['env']['command_mode'] == 'free':
+      self.action_dim = 4 + 1
+    elif self.cfg['env']['command_mode'] == 'constrained':
+      self.action_dim = 3 + 1
 
     self.obs_spec = {
       "robot_q": self._dims.GeneralizedCoordinatesDim.value,
@@ -348,7 +361,7 @@ class Biroller(VecTask):
     fingertips_frames = ["l3", "r3"]
     self._fingertips_handles = OrderedDict.fromkeys(fingertips_frames, None)
     # mapping from name to gym dof index
-    robot_dof_names = []
+    robot_dof_names = ['wrist']
     for dof_name in ['l', 'r']:
       robot_dof_names.extend(
         f'{robot_id}_{dof_name}' for robot_id in ['finger', 'pitch', 'roll'])
@@ -481,7 +494,7 @@ class Biroller(VecTask):
     self.gym_assets["boundary"] = self.__define_boundary_asset()
     self.gym_assets["object"] = self.__define_object_asset()
     self.object_texture = self.gym.create_texture_from_file(
-        self.sim, f'{self._birollers_assets_dir}/objects/rounded_cube.png')
+      self.sim, f'{self._birollers_assets_dir}/objects/rounded_cube.png')
     self.gym_assets["goal_object"] = self.__define_goal_object_asset()
     # display the properties (only for debugging)
     # robot
@@ -542,7 +555,7 @@ class Biroller(VecTask):
     max_agg_shapes = 0
     for asset in self.gym_assets.values():
       max_agg_bodies += self.gym.get_asset_rigid_body_count(asset)
-      max_agg_shapes += self.gym.get_asset_rigid_shape_count(asset) 
+      max_agg_shapes += self.gym.get_asset_rigid_shape_count(asset)
     # iterate and create environment instances
     for env_index in range(self.num_envs):
       # create environment
@@ -575,13 +588,15 @@ class Biroller(VecTask):
       # add object to environment
       object_handle = self.gym.create_actor(env_ptr, self.gym_assets["object"], gymapi.Transform(),
                                             "object", env_index, 0, 0)
-      self.gym.set_rigid_body_texture(env_ptr, object_handle, 0, gymapi.MESH_VISUAL, self.object_texture)
+      self.gym.set_rigid_body_texture(
+        env_ptr, object_handle, 0, gymapi.MESH_VISUAL, self.object_texture)
       object_idx = self.gym.get_actor_index(
         env_ptr, object_handle, gymapi.DOMAIN_SIM)
       # add goal object to environment
       goal_handle = self.gym.create_actor(env_ptr, self.gym_assets["goal_object"], gymapi.Transform(),
                                           "goal_object", env_index + self.num_envs, 0, 0)
-      self.gym.set_rigid_body_texture(env_ptr, goal_handle, 0, gymapi.MESH_VISUAL, self.object_texture)
+      self.gym.set_rigid_body_texture(
+        env_ptr, goal_handle, 0, gymapi.MESH_VISUAL, self.object_texture)
       goal_object_idx = self.gym.get_actor_index(
         env_ptr, goal_handle, gymapi.DOMAIN_SIM)
       # change settings of DOF
@@ -607,6 +622,19 @@ class Biroller(VecTask):
     for asset_name, asset_indices in self.gym_indices.items():
       self.gym_indices[asset_name] = torch.tensor(
         asset_indices, dtype=torch.long, device=self.device)
+    # create cameras
+    self.cameras = []
+    for j in range(self.cfg["env"]["numCameras"]):
+      # create camera
+      camera_properties = gymapi.CameraProperties()
+      camera_properties.width = 256
+      camera_properties.height = 256
+      h1 = self.gym.create_camera_sensor(self.envs[j], camera_properties)
+      camera_position = gymapi.Vec3(0.1, 0.0, 0.1)
+      camera_target = gymapi.Vec3(0.0, 0.0, 0.1)
+      self.gym.set_camera_location(
+        h1, self.envs[j], camera_position, camera_target)
+      self.cameras.append(h1)
 
   def __configure_mdp_spaces(self):
     """
@@ -622,9 +650,12 @@ class Biroller(VecTask):
       # action space is joint torques
       self._action_scale.low = self._robot_limits["joint_torque"].low
       self._action_scale.high = self._robot_limits["joint_torque"].high
-    elif self.cfg["env"]["command_mode"] == "mix":
+    elif self.cfg["env"]["command_mode"] == "constrained":
       self._action_scale.low = self._robot_limits["action"].low
       self._action_scale.high = self._robot_limits["action"].high
+    elif self.cfg["env"]["command_mode"] == "free":
+      self._action_scale.low = self._robot_limits["joint_vel"].low
+      self._action_scale.high = self._robot_limits["joint_vel"].high
     else:
       msg = f"Invalid command mode. Input: {self.cfg['env']['command_mode']} not in ['torque', 'position']."
       raise ValueError(msg)
@@ -716,7 +747,7 @@ class Biroller(VecTask):
       msg = f"States scaling dimensions mismatch. " \
         f"\tLow: {self._states_scale.low.shape[0]}, " \
         f"\tHigh: {self._states_scale.high.shape[0]}, " \
-        f"\tExpected: {state_dim}." # define by state_spec (generated)
+        f"\tExpected: {state_dim}."  # define by state_spec (generated)
       raise AssertionError(msg)
     # actions
     if self._action_scale.low.shape[0] != action_dim or self._action_scale.high.shape[0] != action_dim:
@@ -1072,12 +1103,12 @@ class Biroller(VecTask):
       computed_torque = self._robot_dof_gains["stiffness"] * \
         (desired_dof_position - self._dof_position)
       computed_torque -= self._robot_dof_gains["damping"] * self._dof_velocity
-    elif self.cfg["env"]["command_mode"] == 'mix':
+    elif self.cfg["env"]["command_mode"] == 'constrained':
       desired_dof_position = self._dof_position.clone()
       pitch_vel = action_transformed[..., 0]
       roll_vel = action_transformed[..., 1]
       move_vel = action_transformed[..., 2]
-      # make two finger close 
+      # make two finger close
       fl_id = self._robot_dof_indices['finger_l']
       fr_id = self._robot_dof_indices['finger_r']
       desired_dof_position[..., fl_id] = 0.01
@@ -1085,14 +1116,57 @@ class Biroller(VecTask):
       # get pitch angle
       pl_id = self._robot_dof_indices['pitch_l']
       pr_id = self._robot_dof_indices['pitch_r']
-      desired_dof_position[..., pl_id] += pitch_vel * self.cfg["sim"]["dt"] 
-      desired_dof_position[..., pr_id] += pitch_vel * self.cfg["sim"]["dt"] 
+      desired_dof_position[..., pl_id] += pitch_vel * self.cfg["sim"]["dt"]
+      desired_dof_position[..., pr_id] += pitch_vel * self.cfg["sim"]["dt"]
       # get roll angle
       rl_id = self._robot_dof_indices['roll_l']
       rr_id = self._robot_dof_indices['roll_r']
-      desired_dof_position[..., rl_id] += (roll_vel+move_vel) * self.cfg["sim"]["dt"]
-      desired_dof_position[..., rr_id] += (roll_vel-move_vel) * self.cfg["sim"]["dt"]
+      desired_dof_position[...,
+                           rl_id] += (roll_vel+move_vel) * self.cfg["sim"]["dt"]
+      desired_dof_position[...,
+                           rr_id] += (roll_vel-move_vel) * self.cfg["sim"]["dt"]
+      # get wrist angle
+      if self.cfg['env']['enable_z_rotation']:
+        w_id = self._robot_dof_indices['wrist']
+        desired_dof_position[..., w_id] += action_transformed[..., 4] * self.cfg["sim"]["dt"]
+      else:
+        desired_dof_position[..., w_id] = 0
       # compute torque to apply
+      computed_torque = self._robot_dof_gains["stiffness"] * \
+        (desired_dof_position - self._dof_position)
+      computed_torque -= self._robot_dof_gains["damping"] * self._dof_velocity
+    elif self.cfg["env"]["command_mode"] == 'free':
+      desired_dof_position = self._dof_position.clone()
+      pitch_l_vel = action_transformed[..., 0]
+      pitch_r_vel = action_transformed[..., 1]
+      roll_l_vel = action_transformed[..., 2]
+      roll_r_vel = action_transformed[..., 3]
+      # make two finger close
+      fl_id = self._robot_dof_indices['finger_l']
+      fr_id = self._robot_dof_indices['finger_r']
+      desired_dof_position[..., fl_id] = 0.01
+      desired_dof_position[..., fr_id] = 0.01
+      # get pitch angle
+      pl_id = self._robot_dof_indices['pitch_l']
+      pr_id = self._robot_dof_indices['pitch_r']
+      desired_dof_position[..., pl_id] += pitch_l_vel * self.cfg["sim"]["dt"]
+      desired_dof_position[..., pr_id] += pitch_r_vel * self.cfg["sim"]["dt"]
+      # get roll angle
+      rl_id = self._robot_dof_indices['roll_l']
+      rr_id = self._robot_dof_indices['roll_r']
+      desired_dof_position[...,
+                           rl_id] += roll_l_vel * self.cfg["sim"]["dt"]
+      desired_dof_position[...,
+                           rr_id] += roll_r_vel * self.cfg["sim"]["dt"]
+      # get wrist angle
+      if self.cfg['env']['enable_z_rotation']:
+        w_id = self._robot_dof_indices['wrist']
+        desired_dof_position[..., w_id] += action_transformed[..., 4] * self.cfg["sim"]["dt"]
+      else:
+        desired_dof_position[..., w_id] = 0
+      # compute torque to apply
+      # DEBUG!!!
+      desired_dof_position *= 0
       computed_torque = self._robot_dof_gains["stiffness"] * \
         (desired_dof_position - self._dof_position)
       computed_torque -= self._robot_dof_gains["damping"] * self._dof_velocity
@@ -1337,6 +1411,56 @@ class Biroller(VecTask):
                                             self._object_urdf_file, object_asset_options)
     # return the asset
     return goal_object_asset
+
+  def ezpolicy(obs, mode='default'):
+    if mode == 'default':
+      # ===parse observation===
+      obj_pos = obs[12:12+7]
+      goal_pos = obs[19:19+7]
+      obs = {
+        'obj_state': goal_pos[3:7],
+        'goal_state': obj_pos[3:7],
+      }
+      goal_orn = R.from_quat(np.concatenate([obs['goal_state'][...,1:], obs['goal_state'][...,[0]]], axis=-1))
+      obj_orn = R.from_quat(
+        np.concatenate([obs['obj_state'][...,1:], obs['obj_state'][...,[0]]], axis=-1))
+      robot_orn = R.from_euler('z', obs['roller_hand/joint_positions'][...,[0]])
+      diff_orn = goal_orn * obj_orn.inv()
+      pitch = -obs['roller_hand/joint_positions'][...,2] % (2 * np.pi)
+      # ===calculate angular velocity===
+      omega = 0.5 * 2 * ((diff_orn).as_quat())[...,:3]
+      # omega *= ((diff_orn.as_quat()[..., 3] > 0) *2 - 1)
+      omega *= ((diff_orn.as_quat()[..., 3] > 0) *2 - 1)
+      local_omega = robot_orn.apply(omega) * 10
+      local_omega_norm = np.linalg.norm(local_omega)
+      if local_omega_norm > 1:
+        local_omega /= local_omega_norm 
+      # ===calculate action===
+      if len(obs['roller_hand/joint_positions'].shape) == 1:
+        action = np.zeros((1, 5))
+      else:
+        action = np.zeros((*obs['roller_hand/joint_positions'].shape[:-1], 5))
+      action[..., 0] = -(local_omega[...,2] - local_omega[...,1] * np.tan(pitch))
+      action[..., 1] = -local_omega[..., 0]
+      action[..., 3] = -local_omega[..., 0]
+      action[..., 2] = local_omega[..., 1] / np.cos(pitch)
+      action[..., 4] = local_omega[..., 1] / np.cos(pitch)
+      action[..., 2] = local_omega[..., 1] / np.cos(pitch)
+      action[..., 4] = local_omega[..., 1] / np.cos(pitch)
+      # compensate for the drop down
+      roller_orn_local = R.from_euler('x', pitch)
+      roller_orn = roller_orn_local * robot_orn.inv()
+      obj_pos = obs['prop/position']
+      obj_pos[...,2] -= 0.05
+      obj_pos_local = roller_orn.apply(obj_pos)
+      action[...,2] += obj_pos_local[..., 2] * 1
+      action[...,4] -= obj_pos_local[..., 2] * 1
+      if len(obs['roller_hand/joint_positions'].shape) == 1:
+        return action[0]
+      else:
+        return action 
+    else:
+      raise NotImplementedError
 
   @property
   def env_steps_count(self) -> int:
@@ -1650,10 +1774,29 @@ except Exception as e:
 @hydra.main(config_name="config", config_path="../cfg")
 def main(cfg):
   env = Biroller(cfg=omegaconf_to_dict(cfg.task),
-                  sim_device='cuda:0', graphics_device_id=0, headless=False)
-  for _ in range(1000):
-    env.step(torch.rand((env.num_envs, env.action_dim),
-             dtype=torch.float, device='cuda:0')*2-1)
+                 sim_device='cuda:0', graphics_device_id=0, headless=True)
+  env.reset()
+  save_video = env.cfg["env"]["numCameras"] > 0
+  if save_video:
+    images = env.render(mode='rgb_array')
+    videos = [[im] for im in images]
+  for _ in tqdm(range(100)):
+    # env.step(torch.tensor([[0,1,0]],
+    #          dtype=torch.float, device='cuda:0'))
+    act = torch.rand((env.num_envs, env.action_dim), dtype=torch.float, device='cuda:0')*0
+    obs, rew, reset, info = env.step(act)
+    if save_video:
+      images = env.render(mode='rgb_array')
+      for vi, im in zip(videos, images):
+        vi.append(im)
+  if save_video:
+    print('rendering...')
+    videos = np.array(videos)
+    video = np.concatenate(videos, axis=0)
+    # video = np.moveaxis(video, -1, 1)
+    import skvideo.io
+    skvideo.io.vwrite('tmp/test.mp4', video, backend='ffmpeg')
+    print('done!')
 
 
 if __name__ == '__main__':

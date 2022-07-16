@@ -6,6 +6,7 @@ experiment: ''
 
 # if set to positive integer, overrides the default number of environments
 num_envs: ''
+num_cameras: ''
 
 wandb: True
 

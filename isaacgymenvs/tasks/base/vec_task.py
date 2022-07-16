@@ -76,6 +76,8 @@ class Env(ABC):
     # if training in a headless mode
     self.headless = headless
 
+    num_cameras = config["env"].get("numCameras", 0)
+    config['enableCameraSensors'] = (num_cameras > 0)
     enable_camera_sensors = config.get("enableCameraSensors", False)
     self.graphics_device_id = graphics_device_id
     if enable_camera_sensors == False and self.headless == True:
@@ -395,35 +397,41 @@ class VecTask(Env):
 
     return self.obs_dict, done_env_ids
 
-  def render(self):
+  def render(self, mode='rgb_array'):
     """Draw the frame to the viewer, and check for keyboard events."""
-    if self.viewer:
+    if self.viewer and mode == 'human':
       # check for window closed
       if self.gym.query_viewer_has_closed(self.viewer):
         sys.exit()
-
       # check for keyboard events
       for evt in self.gym.query_viewer_action_events(self.viewer):
         if evt.action == "QUIT" and evt.value > 0:
           sys.exit()
         elif evt.action == "toggle_viewer_sync" and evt.value > 0:
           self.enable_viewer_sync = not self.enable_viewer_sync
-
       # fetch results
-      if self.device != 'cpu':
+      if self.device != "cpu":
         self.gym.fetch_results(self.sim, True)
-
       # step graphics
       if self.enable_viewer_sync:
         self.gym.step_graphics(self.sim)
         self.gym.draw_viewer(self.viewer, self.sim, True)
-
         # Wait for dt to elapse in real time.
         # This synchronizes the physics simulation with the rendering rate.
         self.gym.sync_frame_time(self.sim)
-
       else:
         self.gym.poll_viewer_events(self.viewer)
+    elif mode == 'rgb_array':
+      if self.device != "cpu":
+        self.gym.fetch_results(self.sim, True)
+      self.gym.step_graphics(self.sim)
+      self.gym.render_all_camera_sensors(self.sim)
+      images = []
+      for idx, handle in enumerate(self.cameras):
+        image = self.gym.get_camera_image(
+          self.sim, self.envs[idx], handle, gymapi.IMAGE_COLOR)
+        images.append(image.reshape((image.shape[0], -1, 4)))
+      return images
 
   def __parse_sim_params(self, physics_engine: str, config_sim: Dict[str, Any]) -> gymapi.SimParams:
     """Parse the config dictionary for physics stepping settings.
