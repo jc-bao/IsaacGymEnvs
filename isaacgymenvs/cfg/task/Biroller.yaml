@@ -22,7 +22,7 @@ env:
   normalize_obs: true
 
   apply_safety_damping: true
-  command_mode: constrained
+  command_mode: free
   normalize_action: true
   cube_obs_keypoints: true
   reset_distribution:

@@ -212,16 +212,16 @@ class Biroller(VecTask):
     ), 
     "joint_vel": SimpleNamespace(
       # pitch_l, pitch_r, roll_l, roll_r
-      low=np.array([-50, -50, -50, -50], dtype=np.float32),
-      high=np.array([50, 50, 50, 50], dtype=np.float32),
+      low=np.array([-0.5, -0.5, -8, -8], dtype=np.float32),
+      high=np.array([0.5, 0.5, 8, 8], dtype=np.float32),
       default=np.array(
         [0.0, 0., 0., 0.0], dtype=np.float32),
     ),
     "joint_position": SimpleNamespace(
       # matches those on the real robot
-      low=np.array([-0.2, -3.14, -3.14] * \
+      low=np.array([-0.03, -3.14, -3.14] * \
                    _dims.NumFingers.value, dtype=np.float32),
-      high=np.array([0.2, 3.14, 3.14] * \
+      high=np.array([0.03, 3.14, 3.14] * \
                     _dims.NumFingers.value, dtype=np.float32),
       default=np.array(
         [0.0, 0., 0.0] * _dims.NumFingers.value, dtype=np.float32),
@@ -304,7 +304,7 @@ class Biroller(VecTask):
     # The kp and kd gains of the PD control of the fingers.
     # Note: This depends on simulation step size and is set for a rate of 250 Hz.
     "stiffness": [20.0, 1000.0, 100.0] * _dims.NumFingers.value,
-    "damping": [0.01, 1, 1] * _dims.NumFingers.value,
+    "damping": [0.2, 1, 0.1] * _dims.NumFingers.value,
     # The kd gains used for damping the joint motor velocities during the
     # safety torque check on the joint motors.
     "safety_damping": [0.08, 0.08, 0.04] * _dims.NumFingers.value
@@ -1090,7 +1090,7 @@ class Biroller(VecTask):
     else:
       action_transformed = self.actions
 
-    default_finger_pos = 0.02
+    default_finger_pos = 0.01
     # TODO change action to residue mode
     # compute command on the basis of mode selected
     if self.cfg["env"]["command_mode"] == 'torque':
@@ -1722,9 +1722,8 @@ def main(cfg):
   if save_video:
     images = env.render(mode='rgb_array')
     videos = [[im] for im in images]
-  for _ in tqdm(range(100)):
-    act = torch.rand((env.num_envs, env.action_dim), dtype=torch.float, device='cuda:0') * 2 - 1
-    # act[:, 2] = 1
+  for _ in tqdm(range(50)):
+    act = torch.rand((env.num_envs, env.action_dim), dtype=torch.float, device='cuda:0') * 2 -1
     obs, rew, reset, info = env.step(act)
     if save_video:
       images = env.render(mode='rgb_array')
