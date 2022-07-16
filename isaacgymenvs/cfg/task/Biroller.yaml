@@ -27,11 +27,11 @@ env:
   cube_obs_keypoints: true
   reset_distribution:
     object_initial_state:
-      type: random
+      type: default
     robot_initial_state:
       dof_pos_stddev: 0.4
       dof_vel_stddev: 0.2
-      type: random
+      type: default
 
   reward_terms:
     finger_move_penalty:
