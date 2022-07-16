@@ -210,6 +210,13 @@ class Biroller(VecTask):
       default=np.array(
         [0.0, 0., 0.0], dtype=np.float32),
     ), 
+    "joint_vel": SimpleNamespace(
+      # pitch_l, pitch_r, roll_l, roll_r
+      low=np.array([-10, -10, -20, -20], dtype=np.float32),
+      high=np.array([10, 10, 20, 20], dtype=np.float32),
+      default=np.array(
+        [0.0, 0., 0., 0.0], dtype=np.float32),
+    ),
     "joint_position": SimpleNamespace(
       # matches those on the real robot
       low=np.array([-0.15, -3.14, -3.14] * \
@@ -306,6 +313,12 @@ class Biroller(VecTask):
 
   def __init__(self, cfg, sim_device, graphics_device_id, headless):
     self.cfg = cfg
+
+    # update params
+    if self.cfg['env']['command_mode'] == 'free':
+      self.action_dim = 4
+    elif self.cfg['env']['command_mode'] == 'constrained':
+      self.action_dim = 3
 
     self.obs_spec = {
       "robot_q": self._dims.GeneralizedCoordinatesDim.value,
@@ -1137,12 +1150,12 @@ class Biroller(VecTask):
       desired_dof_position[...,
                            rr_id] += roll_r_vel * self.cfg["sim"]["dt"]
       # get wrist angle
-      if self.cfg['env']['enable_z_rotation']:
-        w_id = self._robot_dof_indices['wrist']
-        desired_dof_position[..., w_id] += action_transformed[..., 4] * self.cfg["sim"]["dt"]
-      else:
-        w_id = self._robot_dof_indices['wrist']
-        desired_dof_position[..., w_id] = 0
+      # if self.cfg['env']['enable_z_rotation']:
+      #   w_id = self._robot_dof_indices['wrist']
+      #   desired_dof_position[..., w_id] += action_transformed[..., 4] * self.cfg["sim"]["dt"]
+      # else:
+      #   w_id = self._robot_dof_indices['wrist']
+      #   desired_dof_position[..., w_id] = 0
       # compute torque to apply
       # DEBUG!!!
       desired_dof_position *= 0
