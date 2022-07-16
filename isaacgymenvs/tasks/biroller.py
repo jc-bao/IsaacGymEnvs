@@ -159,8 +159,8 @@ class Biroller(VecTask):
   # dimensions of the system
   _dims = BirollerDimensions
   # TODO change max torqu
-  _max_torque_Nm = [1, 100, 1000]*2 + [10]
-  _min_torque_Nm = [-1, -100, -1000]*2 + [-10]
+  _max_torque_Nm = [100] + [10, 100, 1000]*2
+  _min_torque_Nm = [-100] + [-10, -100, -1000]*2
   # maximum joint velocity (in rad/s) on each actuator
   # TODO change max vel
   _max_velocity_radps = 10
@@ -219,12 +219,12 @@ class Biroller(VecTask):
     ),
     "joint_position": SimpleNamespace(
       # matches those on the real robot
-      low=np.array([-0.15, -3.14, -3.14] * \
-                   _dims.NumFingers.value + [-3.14], dtype=np.float32),
-      high=np.array([0.15, 3.14, 3.14] * \
-                    _dims.NumFingers.value + [-3.14], dtype=np.float32),
+      low=np.array([-3.14] + [-0.15, -3.14, -3.14] * \
+                   _dims.NumFingers.value, dtype=np.float32),
+      high=np.array([3.14] + [0.15, 3.14, 3.14] * \
+                    _dims.NumFingers.value, dtype=np.float32),
       default=np.array(
-        [0.00, 0., 0.0] * _dims.NumFingers.value + [0], dtype=np.float32),
+        [0] + [0.00, 0., 0.0] * _dims.NumFingers.value, dtype=np.float32),
     ),
     "joint_velocity": SimpleNamespace(
       low=np.full(_dims.JointVelocityDim.value, - \
@@ -257,15 +257,15 @@ class Biroller(VecTask):
     ),
     # used if we want to have joint stiffness/damping as parameters`
     "joint_stiffness": SimpleNamespace(
-      low=np.array([1.0, 1.0, 1.0] * _dims.NumFingers.value + [1.0], dtype=np.float32),
-      high=np.array([50.0, 50.0, 50.0] * \
-                    _dims.NumFingers.value + [1.0], dtype=np.float32),
+      low=np.array([1.0] + [1.0, 1.0, 1.0] * _dims.NumFingers.value, dtype=np.float32),
+      high=np.array([1.0] + [50.0, 50.0, 50.0] * \
+                    _dims.NumFingers.value, dtype=np.float32),
     ),
     "joint_damping": SimpleNamespace(
-      low=np.array([0.01, 0.03, 0.0001] * \
-                   _dims.NumFingers.value + [0.01], dtype=np.float32),
-      high=np.array([1.0, 3.0, 0.01] * \
-                    _dims.NumFingers.value + [1.0], dtype=np.float32),
+      low=np.array([0.01] + [0.01, 0.03, 0.0001] * \
+                   _dims.NumFingers.value, dtype=np.float32),
+      high=np.array([1.0] + [1.0, 3.0, 0.01] * \
+                    _dims.NumFingers.value, dtype=np.float32),
     ),
   }
   # TODO set object limit
@@ -275,7 +275,7 @@ class Biroller(VecTask):
     "position": SimpleNamespace(
       low=np.array([-0.1, -0.1, obj_z-0.1], dtype=np.float32),
       high=np.array([0.1, 0.1, obj_z+0.1], dtype=np.float32),
-      default=np.array([0, 0, obj_z], dtype=np.float32)
+      default=np.array([0, 0.0, obj_z], dtype=np.float32)
     ),
     # difference between two positions
     "position_delta": SimpleNamespace(
@@ -303,11 +303,11 @@ class Biroller(VecTask):
   _robot_dof_gains = {
     # The kp and kd gains of the PD control of the fingers.
     # Note: This depends on simulation step size and is set for a rate of 250 Hz.
-    "stiffness": [100.0, 10.0, 10.0] * _dims.NumFingers.value + [10.0],
-    "damping": [1, 1, 0.1] * _dims.NumFingers.value + [1],
+    "stiffness": [100.0] + [100.0, 10.0, 10.0] * _dims.NumFingers.value,
+    "damping":  [1] + [1, 0.1, 0.1] * _dims.NumFingers.value,
     # The kd gains used for damping the joint motor velocities during the
     # safety torque check on the joint motors.
-    "safety_damping": [0.08, 0.08, 0.04] * _dims.NumFingers.value + [0.04]
+    "safety_damping": [0.04]+[0.08, 0.08, 0.04] * _dims.NumFingers.value
   }
   action_dim = _dims.ActionDim.value
 
@@ -1130,6 +1130,7 @@ class Biroller(VecTask):
         w_id = self._robot_dof_indices['wrist']
         desired_dof_position[..., w_id] += action_transformed[..., 4] * self.cfg["sim"]["dt"]
       else:
+        w_id = self._robot_dof_indices['wrist']
         desired_dof_position[..., w_id] = 0
       # compute torque to apply
       computed_torque = self._robot_dof_gains["stiffness"] * \
@@ -1163,6 +1164,7 @@ class Biroller(VecTask):
         w_id = self._robot_dof_indices['wrist']
         desired_dof_position[..., w_id] += action_transformed[..., 4] * self.cfg["sim"]["dt"]
       else:
+        w_id = self._robot_dof_indices['wrist']
         desired_dof_position[..., w_id] = 0
       # compute torque to apply
       # DEBUG!!!
