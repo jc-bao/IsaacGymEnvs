@@ -639,6 +639,9 @@ class Biroller(VecTask):
     elif self.cfg["env"]["command_mode"] == "constrained":
       self._action_scale.low = self._robot_limits["action"].low
       self._action_scale.high = self._robot_limits["action"].high
+    elif self.cfg["env"]["command_mode"] == "free":
+      self._action_scale.low = self._robot_limits["joint_vel"].low
+      self._action_scale.high = self._robot_limits["joint_vel"].high
     else:
       msg = f"Invalid command mode. Input: {self.cfg['env']['command_mode']} not in ['torque', 'position']."
       raise ValueError(msg)
@@ -1107,6 +1110,42 @@ class Biroller(VecTask):
       desired_dof_position[..., rl_id] += (roll_vel+move_vel) * self.cfg["sim"]["dt"]
       desired_dof_position[..., rr_id] += (roll_vel-move_vel) * self.cfg["sim"]["dt"]
       # compute torque to apply
+      computed_torque = self._robot_dof_gains["stiffness"] * \
+        (desired_dof_position - self._dof_position)
+      computed_torque -= self._robot_dof_gains["damping"] * self._dof_velocity
+    elif self.cfg["env"]["command_mode"] == 'free':
+      desired_dof_position = self._dof_position.clone()
+      pitch_l_vel = action_transformed[..., 0]
+      pitch_r_vel = action_transformed[..., 1]
+      roll_l_vel = action_transformed[..., 2]
+      roll_r_vel = action_transformed[..., 3]
+      # make two finger close
+      fl_id = self._robot_dof_indices['finger_l']
+      fr_id = self._robot_dof_indices['finger_r']
+      desired_dof_position[..., fl_id] = 0.01
+      desired_dof_position[..., fr_id] = 0.01
+      # get pitch angle
+      pl_id = self._robot_dof_indices['pitch_l']
+      pr_id = self._robot_dof_indices['pitch_r']
+      desired_dof_position[..., pl_id] += pitch_l_vel * self.cfg["sim"]["dt"]
+      desired_dof_position[..., pr_id] += pitch_r_vel * self.cfg["sim"]["dt"]
+      # get roll angle
+      rl_id = self._robot_dof_indices['roll_l']
+      rr_id = self._robot_dof_indices['roll_r']
+      desired_dof_position[...,
+                           rl_id] += roll_l_vel * self.cfg["sim"]["dt"]
+      desired_dof_position[...,
+                           rr_id] += roll_r_vel * self.cfg["sim"]["dt"]
+      # get wrist angle
+      if self.cfg['env']['enable_z_rotation']:
+        w_id = self._robot_dof_indices['wrist']
+        desired_dof_position[..., w_id] += action_transformed[..., 4] * self.cfg["sim"]["dt"]
+      else:
+        w_id = self._robot_dof_indices['wrist']
+        desired_dof_position[..., w_id] = 0
+      # compute torque to apply
+      # DEBUG!!!
+      desired_dof_position *= 0
       computed_torque = self._robot_dof_gains["stiffness"] * \
         (desired_dof_position - self._dof_position)
       computed_torque -= self._robot_dof_gains["damping"] * self._dof_velocity
