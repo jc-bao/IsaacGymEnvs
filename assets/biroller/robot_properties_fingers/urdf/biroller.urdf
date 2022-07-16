@@ -93,13 +93,15 @@
     <collision>
       <origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 0.00000" />
       <geometry>
-        <cylinder radius="0.025" length="0.05" />
+        <!-- <cylinder radius="0.025" length="0.05" /> -->
+        <mesh filename="package://robot_properties_fingers/meshes/roller_rough.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual>
       <origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 0.00000" />
       <geometry>
-        <cylinder radius="0.025" length="0.05" />
+        <!-- <cylinder radius="0.025" length="0.05" /> -->
+        <mesh filename="package://robot_properties_fingers/meshes/roller_rough.obj" scale="1 1 1"/>
       </geometry>
     </visual>
   </link>
@@ -209,13 +211,15 @@
     <collision>
       <origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 0.00000" />
       <geometry>
-        <cylinder radius="0.025" length="0.05" />
+        <!-- <cylinder radius="0.025" length="0.05" /> -->
+        <mesh filename="package://robot_properties_fingers/meshes/roller_rough.obj" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual>
       <origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 0.00000" />
       <geometry>
-        <cylinder radius="0.025" length="0.05" />
+        <!-- <cylinder radius="0.025" length="0.05" />-->
+        <mesh filename="package://robot_properties_fingers/meshes/roller_rough.obj" scale="1 1 1"/>
       </geometry>
     </visual>
   </link>
