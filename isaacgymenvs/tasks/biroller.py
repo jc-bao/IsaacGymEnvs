@@ -636,7 +636,7 @@ class Biroller(VecTask):
       # action space is joint torques
       self._action_scale.low = self._robot_limits["joint_torque"].low
       self._action_scale.high = self._robot_limits["joint_torque"].high
-    elif self.cfg["env"]["command_mode"] == "mix":
+    elif self.cfg["env"]["command_mode"] == "constrained":
       self._action_scale.low = self._robot_limits["action"].low
       self._action_scale.high = self._robot_limits["action"].high
     else:
@@ -1086,7 +1086,7 @@ class Biroller(VecTask):
       computed_torque = self._robot_dof_gains["stiffness"] * \
         (desired_dof_position - self._dof_position)
       computed_torque -= self._robot_dof_gains["damping"] * self._dof_velocity
-    elif self.cfg["env"]["command_mode"] == 'mix':
+    elif self.cfg["env"]["command_mode"] == 'constrained':
       desired_dof_position = self._dof_position.clone()
       pitch_vel = action_transformed[..., 0]
       roll_vel = action_transformed[..., 1]
