@@ -304,7 +304,7 @@ class Biroller(VecTask):
     # The kp and kd gains of the PD control of the fingers.
     # Note: This depends on simulation step size and is set for a rate of 250 Hz.
     "stiffness": [20.0, 1000.0, 100.0] * _dims.NumFingers.value,
-    "damping": [0.2, 1, 0.1] * _dims.NumFingers.value,
+    "damping": [0.2, 4, 0.1] * _dims.NumFingers.value,
     # The kd gains used for damping the joint motor velocities during the
     # safety torque check on the joint motors.
     "safety_damping": [0.08, 0.08, 0.04] * _dims.NumFingers.value
