@@ -164,6 +164,7 @@ class Biroller(VecTask):
   # maximum joint velocity (in rad/s) on each actuator
   # TODO change max vel
   _max_velocity_radps = 10
+  z_offset = 0.015
 
   # History of state: Number of timesteps to save history for
   # Note: Currently used only to manage history of object and frame states.
@@ -270,7 +271,7 @@ class Biroller(VecTask):
   }
   # TODO set object limit
   # limits of the object (mapped later: str -> torch.tensor)
-  obj_z = 0.064
+  obj_z = 0.064 - z_offset
   _object_limits: dict = {
     "position": SimpleNamespace(
       low=np.array([-0.1, -0.1, obj_z-0.1], dtype=np.float32),
@@ -303,7 +304,7 @@ class Biroller(VecTask):
   _robot_dof_gains = {
     # The kp and kd gains of the PD control of the fingers.
     # Note: This depends on simulation step size and is set for a rate of 250 Hz.
-    "stiffness": [20.0, 1000.0, 100.0] * _dims.NumFingers.value,
+    "stiffness": [20.0, 4000.0, 100.0] * _dims.NumFingers.value,
     "damping": [0.2, 4, 0.1] * _dims.NumFingers.value,
     # The kd gains used for damping the joint motor velocities during the
     # safety torque check on the joint motors.
@@ -567,7 +568,7 @@ class Biroller(VecTask):
         self.gym.begin_aggregate(env_ptr, max_agg_bodies, max_agg_shapes, True)
       # add biroller robot to environment
       robot_trans = gymapi.Transform()
-      robot_trans.p.z = 0.18
+      robot_trans.p.z = 0.18 - self.z_offset
       robot_trans.r.x, robot_trans.r.y, robot_trans.r.z, robot_trans.r.w = 1, 0, 0, 0
       trifinger_actor = self.gym.create_actor(env_ptr, self.gym_assets["robot"], robot_trans,
                                               "robot", env_index, 0, 0)
@@ -629,8 +630,8 @@ class Biroller(VecTask):
       camera_properties.width = 256
       camera_properties.height = 256
       h1 = self.gym.create_camera_sensor(self.envs[j], camera_properties)
-      camera_position = gymapi.Vec3(0.1, 0.0, 0.1)
-      camera_target = gymapi.Vec3(0.0, 0.0, 0.1)
+      camera_position = gymapi.Vec3(0.1, 0.0, 0.1-self.z_offset)
+      camera_target = gymapi.Vec3(0.0, 0.0, 0.1-self.z_offset)
       self.gym.set_camera_location(
         h1, self.envs[j], camera_position, camera_target)
       self.cameras.append(h1)
@@ -1286,7 +1287,7 @@ class Biroller(VecTask):
     trifinger_props = self.gym.get_asset_rigid_shape_properties(
       trirollers_asset)
     for p in trifinger_props:
-      p.friction = 500.0
+      p.friction = 1000.0
       p.torsion_friction = 1.0
       p.restitution = 0.8
     self.gym.set_asset_rigid_shape_properties(
@@ -1723,9 +1724,9 @@ def main(cfg):
     images = env.render(mode='rgb_array')
     videos = [[im] for im in images]
   for _ in tqdm(range(50)):
-    act = torch.rand((env.num_envs, env.action_dim), dtype=torch.float, device='cuda:0') * 0
-    act[..., 2] = 1
-    act[..., 3] = 1
+    act = torch.rand((env.num_envs, env.action_dim), dtype=torch.float, device='cuda:0') * 2 - 1
+    # act[..., 2] = 1
+    # act[..., 3] = 1
     obs, rew, reset, info = env.step(act)
     if save_video:
       images = env.render(mode='rgb_array')
