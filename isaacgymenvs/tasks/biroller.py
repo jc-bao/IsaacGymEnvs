@@ -159,8 +159,8 @@ class Biroller(VecTask):
   # dimensions of the system
   _dims = BirollerDimensions
   # TODO change max torqu
-  _max_torque_Nm = [10, 100, 1000]*2
-  _min_torque_Nm = [-10, -100, -1000]*2
+  _max_torque_Nm = [1, 100, 1000]*2
+  _min_torque_Nm = [-1, -100, -1000]*2
   # maximum joint velocity (in rad/s) on each actuator
   # TODO change max vel
   _max_velocity_radps = 10
