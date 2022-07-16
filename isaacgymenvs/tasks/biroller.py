@@ -14,6 +14,7 @@ from isaacgymenvs.utils.reformat import omegaconf_to_dict
 import numpy as np
 import os
 import torch
+from tqdm import tqdm
 
 from collections import OrderedDict
 
@@ -607,6 +608,19 @@ class Biroller(VecTask):
     for asset_name, asset_indices in self.gym_indices.items():
       self.gym_indices[asset_name] = torch.tensor(
         asset_indices, dtype=torch.long, device=self.device)
+    # create cameras
+    self.cameras = []
+    for j in range(self.cfg["env"]["numCameras"]):
+      # create camera
+      camera_properties = gymapi.CameraProperties()
+      camera_properties.width = 256
+      camera_properties.height = 256
+      h1 = self.gym.create_camera_sensor(self.envs[j], camera_properties)
+      camera_position = gymapi.Vec3(0.1, 0.0, 0.1)
+      camera_target = gymapi.Vec3(0.0, 0.0, 0.1)
+      self.gym.set_camera_location(
+        h1, self.envs[j], camera_position, camera_target)
+      self.cameras.append(h1)
 
   def __configure_mdp_spaces(self):
     """
@@ -1650,11 +1664,27 @@ except Exception as e:
 @hydra.main(config_name="config", config_path="../cfg")
 def main(cfg):
   env = Biroller(cfg=omegaconf_to_dict(cfg.task),
-                  sim_device='cuda:0', graphics_device_id=0, headless=False)
-  for _ in range(1000):
-    env.step(torch.rand((env.num_envs, env.action_dim),
-             dtype=torch.float, device='cuda:0')*2-1)
-
+                 sim_device='cuda:0', graphics_device_id=0, headless=True)
+  env.reset()
+  save_video = env.cfg["env"]["numCameras"] > 0
+  if save_video:
+    images = env.render(mode='rgb_array')
+    videos = [[im] for im in images]
+  for _ in tqdm(range(100)):
+    act = torch.rand((env.num_envs, env.action_dim), dtype=torch.float, device='cuda:0')*0
+    obs, rew, reset, info = env.step(act)
+    if save_video:
+      images = env.render(mode='rgb_array')
+      for vi, im in zip(videos, images):
+        vi.append(im)
+  if save_video:
+    print('rendering...')
+    videos = np.array(videos)
+    video = np.concatenate(videos, axis=0)
+    # video = np.moveaxis(video, -1, 1)
+    import skvideo.io
+    skvideo.io.vwrite('tmp/test.mp4', video, backend='ffmpeg')
+    print('done!')
 
 if __name__ == '__main__':
   main()

@@ -9,6 +9,7 @@ env:
   envSpacing: 1.0
 
   numEnvs: ${resolve_default:16384,${...num_envs}}
+  numCameras: ${resolve_default:0,${...num_cameras}}
 
   episodeLength: 100
 
