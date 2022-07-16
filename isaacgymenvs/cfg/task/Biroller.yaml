@@ -22,7 +22,7 @@ env:
   normalize_obs: true
 
   apply_safety_damping: true
-  command_mode: free
+  command_mode: constrained
   normalize_action: true
   cube_obs_keypoints: true
   reset_distribution:
@@ -66,8 +66,7 @@ sim:
   gravity:
   - 0.0
   - 0.0
-  # - -9.81
-  - 0.0 
+  - -9.81
   physx:
     num_threads: ${....num_threads}
     solver_type: ${....solver_type}
