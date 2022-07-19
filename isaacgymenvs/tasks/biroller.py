@@ -213,8 +213,8 @@ class Biroller(VecTask):
     ), 
     "joint_vel": SimpleNamespace(
       # pitch_l, pitch_r, roll_l, roll_r
-      low=np.array([-0.5, -0.5, -8, -8], dtype=np.float32),
-      high=np.array([0.5, 0.5, 8, 8], dtype=np.float32),
+      low=np.array([-0.4, -0.4, -8, -8], dtype=np.float32),
+      high=np.array([0.4, 0.4, 8, 8], dtype=np.float32),
       default=np.array(
         [0.0, 0., 0., 0.0], dtype=np.float32),
     ),
@@ -1130,10 +1130,10 @@ class Biroller(VecTask):
       computed_torque -= self._robot_dof_gains["damping"] * self._dof_velocity
     elif self.cfg["env"]["command_mode"] == 'free':
       desired_dof_position = self._dof_position.clone()
-      pitch_l_vel = action_transformed[..., 0]
-      pitch_r_vel = action_transformed[..., 1]
-      roll_l_vel = action_transformed[..., 2]
-      roll_r_vel = action_transformed[..., 3]
+      self.pitch_l_vel = action_transformed[..., 0]
+      self.pitch_r_vel = action_transformed[..., 1]
+      self.roll_l_vel = action_transformed[..., 2]
+      self.roll_r_vel = action_transformed[..., 3]
       # make two finger close
       fl_id = self._robot_dof_indices['finger_l']
       fr_id = self._robot_dof_indices['finger_r']
@@ -1142,15 +1142,15 @@ class Biroller(VecTask):
       # get pitch angle
       pl_id = self._robot_dof_indices['pitch_l']
       pr_id = self._robot_dof_indices['pitch_r']
-      desired_dof_position[..., pl_id] += pitch_l_vel * self.cfg["sim"]["dt"]
-      desired_dof_position[..., pr_id] += pitch_r_vel * self.cfg["sim"]["dt"]
+      desired_dof_position[..., pl_id] += self.pitch_l_vel * self.cfg["sim"]["dt"]
+      desired_dof_position[..., pr_id] += self.pitch_r_vel * self.cfg["sim"]["dt"]
       # get roll angle
       rl_id = self._robot_dof_indices['roll_l']
       rr_id = self._robot_dof_indices['roll_r']
       desired_dof_position[...,
-                           rl_id] += roll_l_vel * self.cfg["sim"]["dt"]
+                           rl_id] += self.roll_l_vel * self.cfg["sim"]["dt"]
       desired_dof_position[...,
-                           rr_id] += roll_r_vel * self.cfg["sim"]["dt"]
+                           rr_id] += self.roll_r_vel * self.cfg["sim"]["dt"]
       # get wrist angle
       # if self.cfg['env']['enable_z_rotation']:
       #   w_id = self._robot_dof_indices['wrist']
@@ -1725,8 +1725,6 @@ def main(cfg):
     videos = [[im] for im in images]
   for _ in tqdm(range(50)):
     act = torch.rand((env.num_envs, env.action_dim), dtype=torch.float, device='cuda:0') * 2 - 1
-    # act[..., 2] = 1
-    # act[..., 3] = 1
     obs, rew, reset, info = env.step(act)
     if save_video:
       images = env.render(mode='rgb_array')
