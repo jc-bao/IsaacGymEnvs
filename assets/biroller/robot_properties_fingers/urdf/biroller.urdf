@@ -1,5 +1,6 @@
 <?xml version="0.0"?>
-<robot name="">
+<robot name="biroller">
+  <link name="base"></link>
   <link name="forearm">
     <inertial>
       <origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 0.00000" />
@@ -261,6 +262,12 @@
       </geometry>
     </visual>
   </link>
+  <joint name='wrist' type='revolute'>
+    <<parent link="base"/>
+    <child link="forearm"/>
+    <origin rpy="0.00000 -0.00000 0.00000" xyz="0.00000 0.00000 0.00000" />
+    <axis xyz="0.00000 0.00000 1.00000" />
+  </joint>
   <joint name="finger_l" type="prismatic">
     <parent link="forearm" />
     <child link="link0_2" />
