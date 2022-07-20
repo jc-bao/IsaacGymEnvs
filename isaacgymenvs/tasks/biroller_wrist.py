@@ -164,7 +164,7 @@ class Biroller(VecTask):
   # maximum joint velocity (in rad/s) on each actuator
   # TODO change max vel
   _max_velocity_radps = 10
-  z_offset = 0.016
+  z_offset = 0.01
 
   # History of state: Number of timesteps to save history for
   # Note: Currently used only to manage history of object and frame states.
@@ -1451,6 +1451,9 @@ class Biroller(VecTask):
                                             self._object_urdf_file, object_asset_options)
     # return the asset
     return goal_object_asset
+  
+  def ezpolicy(obs):
+    pass
 
   @property
   def env_steps_count(self) -> int:
