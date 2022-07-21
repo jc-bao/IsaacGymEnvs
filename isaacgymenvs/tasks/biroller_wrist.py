@@ -1,4 +1,7 @@
 from omegaconf import OmegaConf
+from PIL import Image
+import matplotlib.pyplot as plt
+import io
 import hydra
 import enum
 from typing import Deque, Dict, Tuple, Union
@@ -203,9 +206,9 @@ class Biroller(VecTask):
   _consecutive_successes: float
 
   # TODO set robot limit
-  v_wrist = 10
-  v_pitch = 10
-  v_roll = 20
+  v_wrist = 10/5
+  v_pitch = 10/5
+  v_roll = 10/5
   _robot_limits: dict = {
     "action": SimpleNamespace(
       # matches those on the real robot
@@ -1455,6 +1458,58 @@ class Biroller(VecTask):
   def ezpolicy(obs):
     pass
 
+  def render(self, mode='rgb_array'):
+    """Draw the frame to the viewer, and check for keyboard events."""
+    if self.viewer and mode == 'human':
+      # check for window closed
+      if self.gym.query_viewer_has_closed(self.viewer):
+        sys.exit()
+      # check for keyboard events
+      for evt in self.gym.query_viewer_action_events(self.viewer):
+        if evt.action == "QUIT" and evt.value > 0:
+          sys.exit()
+        elif evt.action == "toggle_viewer_sync" and evt.value > 0:
+          self.enable_viewer_sync = not self.enable_viewer_sync
+      # fetch results
+      if self.device != "cpu":
+        self.gym.fetch_results(self.sim, True)
+      # step graphics
+      if self.enable_viewer_sync:
+        self.gym.step_graphics(self.sim)
+        self.gym.draw_viewer(self.viewer, self.sim, True)
+        # Wait for dt to elapse in real time.
+        # This synchronizes the physics simulation with the rendering rate.
+        self.gym.sync_frame_time(self.sim)
+      else:
+        self.gym.poll_viewer_events(self.viewer)
+    elif mode == 'rgb_array':
+      if self.device != "cpu":
+        self.gym.fetch_results(self.sim, True)
+      self.gym.step_graphics(self.sim)
+      self.gym.render_all_camera_sensors(self.sim)
+      images = []
+      for idx, handle in enumerate(self.cameras):
+        image = self.gym.get_camera_image(
+          self.sim, self.envs[idx], handle, gymapi.IMAGE_COLOR)
+        # if self.reset_buf[idx]:
+        #   plt.clf()
+        # for i in range(7):
+        #   if i in [1,4]: pass
+        #   plt.scatter(self.desired_dof_position[idx,i].cpu().numpy(), self.progress_buf[idx].cpu().numpy())
+        # img_buf = io.BytesIO()
+        # plt.savefig(img_buf, format='png', dpi=20)
+        # plt_im = np.array(Image.open(img_buf))[..., :4]
+        image = image.reshape((image.shape[0], -1, 4))
+        image[:100, :, :] = 255 # y, x, color
+        for i in range(7):
+          target_dof_pos = int((self.desired_dof_position[idx,i].cpu().numpy() + np.pi) / (2 * np.pi) * 100)
+          dof_pos = int((self._dof_position[idx,0].cpu().numpy() + np.pi) / (2 * np.pi) * 100)
+          image[(100-target_dof_pos):(105-target_dof_pos), 30*i:(30*i+10), 0] = 0
+          image[(100-dof_pos):(105-dof_pos), (30*i+10):(30*i+20), 1] = 0
+          image[:100, 30*i-1, :] = 0
+          images.append(image)
+      return images
+
   @property
   def env_steps_count(self) -> int:
     """Returns the total number of environment steps aggregated across parallel environments."""
@@ -1565,12 +1620,12 @@ def compute_trifinger_reward(
   reset = torch.zeros_like(reset_buf)
   # check orientation change enough
   not_change_in_obj_orn = quat_diff_rad(last_object_state[:, 3:7],
-                                        object_state[:, 3:7]) < 0.004
+                                        object_state[:, 3:7]) < 0.001
   not_change_in_obj_pos = torch.norm(
     last_object_state[:, 0:3] - object_state[:, 0:3],
     p=2, dim=-1) < 0.0002
-  obj_fly_away = (torch.abs(object_state[:, 0:2]) > 0.08).any(
-    dim=-1) | (object_state[:, 2] > 0.08) | (object_state[:, 2] < 0.01)
+  obj_fly_away = (torch.abs(object_state[:, 0:2]) > 0.2).any(
+    dim=-1) | (object_state[:, 2] > 0.2)
   reset_env = (not_change_in_obj_orn & not_change_in_obj_pos) | (
     progress_buf >= episode_length - 1) | obj_fly_away
   # reset_env = (progress_buf >= episode_length - 1)
